@@ -1,0 +1,249 @@
+unit Form_Ingreso;
+
+interface
+
+uses
+  Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
+  Dialogs, StdCtrls, Sistema_ABM, Unidad_Usuarios, Unidad_Perfiles, Unidad_Empresas;
+
+type
+  TFIngreso = class(TForm)
+    GroupBox1: TGroupBox;
+    Label1: TLabel;
+    Label2: TLabel;
+    ENick: TEdit;
+    EContrasena: TEdit;
+    BIngresar: TButton;
+    BSalir: TButton;
+    CBEmpresas: TComboBox;
+    Label3: TLabel;
+    BNuevaEmpresa: TButton;
+    procedure BSalirClick(Sender: TObject);
+    procedure BIngresarClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure CBEmpresasChange(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure BNuevaEmpresaClick(Sender: TObject);
+    procedure InicializarEmpresas;
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+    c_Ruta, c_Ruta_Archivos: string;
+    usuario: Tipo_Posicion;
+    nick_Usuario: string[35];
+    nombre_Empresa: string[35];
+  end;
+
+var
+  FIngreso: TFIngreso;
+  Usuarios: Modelo_Usuario;
+  Perfiles: Modelo_Perfil;
+  Empresas: Modelo_Empresa;
+  pos_Usuario, pos_Perfil: Tipo_Posicion;
+
+implementation
+
+uses Form_Clientes, Form_Listados_Auditorias, Form_Perfiles,
+  Form_Provincias, Form_Usuarios, Form_Aud_Clientes, Form_Aud_Perfiles,
+  Form_Aud_Provincias, Form_Aud_Usuarios;
+
+
+{$R *.dfm}
+
+procedure TFIngreso.BSalirClick(Sender: TObject);
+begin
+  Close;
+  Application.Terminate;
+end;
+
+
+procedure TFIngreso.FormActivate(Sender: TObject);
+begin
+  ENick.Text:= '';
+  EContrasena.Text:= '';
+end;
+
+procedure TFIngreso.BIngresarClick(Sender: TObject);
+var
+  Reg_Usuario, Reg_Usuario_Aux: Registro_Usuario;
+  Reg_Perfil: Registro_Perfil;
+  respuesta: boolean;
+  nuevoPass: string;
+begin
+  Reg_Usuario_Aux.Nick:= ENick.Text;
+  Reg_Usuario_Aux.Contrasena:= EContrasena.Text;
+  if ((ENick.Text <> '') and (EContrasena.Text <> '') and (CBEmpresas.ItemIndex <> -1)) then
+    begin
+      if Usuarios.Buscar(Reg_Usuario_Aux.Nick,pos_Usuario,false) = true then
+        begin
+          Usuarios.Capturar(Reg_Usuario,pos_Usuario);
+          if ((Reg_Usuario.Nick = Reg_Usuario_Aux.Nick) and (Reg_Usuario.Contrasena = Reg_Usuario_Aux.Contrasena)) then
+            begin
+              if ((Reg_Usuario.Nick = 'admin') and (Reg_Usuario.Contrasena = 'claveacceso')) then
+                begin
+                  repeat
+                    respuesta:= InputQuery('Nueva Contraseña', 'Ingrese una nueva contraseña', nuevoPass);
+                    Reg_Usuario.Contrasena:= nuevoPass;
+                    Usuarios.Modificar(Reg_Usuario,pos_Usuario);
+                  until respuesta = true;
+                end;
+              FPrincipal.Show;
+              FIngreso.Visible:= false;
+              Perfiles.Capturar(Reg_Perfil,Reg_Usuario.Perfil);
+              if Reg_Perfil.Hab_Clientes = true then
+                FPrincipal.ABMClientes1.Enabled:= true
+              else
+                FPrincipal.ABMClientes1.Enabled:= false;
+              if Reg_Perfil.Hab_Provincias = true then
+                FPrincipal.Provincias1.Enabled:= true
+              else
+                FPrincipal.Provincias1.Enabled:= false;
+              if Reg_Perfil.Hab_Auditoria = true then
+                FPrincipal.Auditorias1.Enabled:= true
+              else
+                FPrincipal.Auditorias1.Enabled:= false;
+              if Reg_Perfil.Hab_Usuarios = true then
+                FPrincipal.Usuarios1.Enabled:= true
+              else
+                FPrincipal.Usuarios1.Enabled:= false;
+              if Reg_Perfil.Hab_Perfiles = true then
+                FPrincipal.Perfiles1.Enabled:= true
+              else
+                FPrincipal.Perfiles1.Enabled:= false;
+              usuario:= Reg_Usuario.id;
+              nick_Usuario:= Reg_Usuario.Nick;
+              FPrincipal.UsuarioRegistrado.Caption:= nick_Usuario;
+              FClientes.UsuarioRegistrado.Caption:= nick_Usuario;
+              FClientes.NombreEmpresa.Caption:= nombre_Empresa;
+              FListAuditorias.UsuarioRegistrado.Caption:= nick_Usuario;
+              FListAuditorias.NombreEmpresa.Caption:= nombre_Empresa;
+              FPerfiles.UsuarioRegistrado.Caption:= nick_Usuario;
+              FPerfiles.NombreEmpresa.Caption:= nombre_Empresa;
+              FProvincias.UsuarioRegistrado.Caption:= nick_Usuario;
+              FProvincias.NombreEmpresa.Caption:= nombre_Empresa;
+              FUsuarios.UsuarioRegistrado.Caption:= nick_Usuario;
+              FUsuarios.NombreEmpresa.Caption:= nombre_Empresa;
+              FAudClientes.UsuarioRegistrado.Caption:= nick_Usuario;
+              FAudClientes.NombreEmpresa.Caption:= nombre_Empresa;
+              FAudPerfiles.UsuarioRegistrado.Caption:= nick_Usuario;
+              FAudPerfiles.NombreEmpresa.Caption:= nombre_Empresa;
+              FAudProvincias.UsuarioRegistrado.Caption:= nick_Usuario;
+              FAudProvincias.NombreEmpresa.Caption:= nombre_Empresa;
+              FAudUsuarios.UsuarioRegistrado.Caption:= nick_Usuario;
+              FAudUsuarios.NombreEmpresa.Caption:= nombre_Empresa;
+            end
+          else
+            begin
+              showmessage('Contraseña incorrecta');
+              EContrasena.SetFocus;
+              EContrasena.Clear;
+            end;
+        end
+      else
+        begin
+          showmessage('Usuario incorrecto');
+          ENick.Clear;
+          ENick.SetFocus;
+        end;
+    end
+  else
+    begin
+      if (ENick.Text = '') then
+        begin
+          showmessage('Ingrese un usuario');
+          ENick.SetFocus;
+        end
+      else
+        if CBEmpresas.ItemIndex = -1 then
+          begin
+            showmessage('Ingrese una empresa');
+            EContrasena.SetFocus;
+          end
+        else
+          begin
+            showmessage('Ingrese una contraseña');
+            EContrasena.SetFocus;
+          end;
+    end;
+end;
+
+
+procedure TFIngreso.CBEmpresasChange(Sender: TObject);
+var
+  Reg_Perfil: Registro_Perfil;
+  Reg_Usuario: Registro_Usuario;
+begin
+  nombre_Empresa:= CBEmpresas.Text;
+  c_Ruta:= c_Ruta_Archivos+'\'+nombre_Empresa;
+  forcedirectories(c_Ruta);
+  Perfiles:= Modelo_Perfil.Create(c_Ruta,'Perfiles');
+  Usuarios:= Modelo_Usuario.Create(c_Ruta,'Usuarios');
+  Usuarios.Abrir;
+  Perfiles.Abrir;
+  if Perfiles.Vacio then
+    begin
+      Reg_Perfil.Nombre:='Root';
+      Reg_Perfil.Hab_Clientes:= true;
+      Reg_Perfil.Hab_Provincias:= true;
+      Reg_Perfil.Hab_Auditoria:= true;
+      Reg_Perfil.Hab_Usuarios:= true;
+      Reg_Perfil.Hab_Perfiles:= true;
+      Reg_Perfil.Hab_BackUp:= true;
+      Reg_Perfil.Hab_Restore:= true;
+      Reg_Perfil.Borrado:= false;
+      Perfiles.Insertar(Reg_Perfil,Perfiles.Primero);
+    end;
+  if Usuarios.Vacio then
+    begin
+      Reg_Usuario.Borrado:= false;
+      Reg_Usuario.Nick:= 'admin';
+      Reg_Usuario.Contrasena:= 'claveacceso';
+      Reg_Usuario.Perfil:= 0;
+      Usuarios.Insertar(Reg_Usuario,Usuarios.Primero);
+    end;
+end;
+
+procedure TFIngreso.InicializarEmpresas;
+var
+  pos_Empresa: Tipo_Posicion;
+  Reg_Empresa: Registro_Empresa;
+begin
+  CBEmpresas.Clear;
+  for pos_Empresa:= Empresas.Primero to Empresas.Ultimo - 1 do
+    begin
+      Empresas.Capturar(Reg_Empresa,pos_Empresa);
+      CBEmpresas.Items.Insert(pos_Empresa,Reg_Empresa.Nombre);
+    end;
+end;
+
+procedure TFIngreso.FormCreate(Sender: TObject);
+begin
+  c_Ruta_Archivos:= GetCurrentDir;
+  Empresas:= Modelo_Empresa.Create(c_Ruta_Archivos,'Empresas');
+  Empresas.Abrir;
+  FIngreso.InicializarEmpresas;
+end;
+
+procedure TFIngreso.BNuevaEmpresaClick(Sender: TObject);
+var
+  Reg_Empresa: Registro_Empresa;
+  nueva_Empresa: string;
+  respuesta: boolean;
+  pos_Empresa: Tipo_Posicion;
+begin
+  respuesta:= InputQuery('Nueva Empresa', 'Ingrese el nombre de la empresa', nueva_Empresa);
+  if respuesta then
+    begin
+      Reg_Empresa.Nombre:= nueva_Empresa;
+      if Empresas.Buscar(Reg_Empresa.Nombre,pos_Empresa,true) = False then
+        begin
+          Empresas.Insertar(Reg_Empresa,pos_Empresa);
+          FIngreso.InicializarEmpresas;
+        end
+      else
+        ShowMessage('Ya existe una empresa con ese nombre');
+    end;
+end;
+
+end.
